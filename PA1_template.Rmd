@@ -1,20 +1,59 @@
-# Reproducible Research: Peer Assessment 1
+# Reproducible Research: Peer Assessment 1, Eino Palin
+This code requires plyr, lattice packages.
+Also, the source file should be unzipped to the working directory
 
 
 ## Loading and preprocessing the data
-
-
+Read the source data and convert the dates to correct format
+```{r preprocessing}
+amd <- read.csv("activity.csv", header=TRUE)
+amd$date <- as.Date(amd$date)
+library(plyr)
+library(lattice)
+```
 
 ## What is mean total number of steps taken per day?
 
+First, summarise the data with ddply, calculate the sum of steps per day and median and mean per day. Then make a histogram of the results and finally print the sum, mean and median per day
 
+```{r Mean total number of steps per day}
+sum_amd <- ddply(amd, "date", summarise, amdSum=sum(steps), amdMean=mean(steps), amdMedian=median(steps))
+hist(sum_amd$amdSum, xlab="Sum of steps taken", main="Total amount of steps taken per day")
+dev.copy(png, file="figures/plot1.png")
+dev.off
+sum_amd
+```
 
 ## What is the average daily activity pattern?
-
-
+First, calculate the mean number of steps taken per time interval, across all days, then plot the results and print the interval where the maximum number of steps occur
+```{r Average daily pattern}
+mean_interval <- ddply(amd, "interval", summarise, intervallMean=mean(steps, na.rm=TRUE))
+plot(mean_interval$interval, mean_interval$intervallMean, type="l", xlab="Time interval", ylab="Mean amount of steps")
+dev.copy(png, file="figures/plot2.png")
+dev.off
+mean_interval[which.max(mean_interval$intervallMean),]
+```
 
 ## Imputing missing values
 
-
+First, calculate the amount rows with missing values, then replace the missing values with the correct interval mean, use ddply to calculate the sum of steps per day and median and mean per day, plot the results and print the new sum, mean and median per day
+```{r Imputing missing values}
+sum(is.na(amd))
+amd[is.na(amd$steps) == "TRUE", 1] <- mean_interval$intervallMean
+sum_amd_new <- ddply(amd, "date", summarise, amdSum=sum(steps), amdMean=mean(steps), amdMedian=median(steps))
+hist(sum_amd_new$amdSum, xlab="Sum of steps taken", main="Total amount of steps taken per day (missing values removed)")
+dev.copy(png, file="figures/plot3.png")
+dev.off
+sum_amd_new
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+First, add the new factor variable, isWeekday, then calculate the mean number of steps and plot the results
+```{r Weekdays}
+amd$isWeekday <- !(weekdays(sum_amd$date)) %in% c('Saturday','Sunday')
+steps_mean_wday <- ddply(amd, c("interval","isWeekday"), summarise, amd_Wday_mean=mean(steps))
+xyplot(amd_Wday_mean ~ interval | isWeekday  , data=steps_mean_wday, type="b", xlab = "Interval", ylab ="Mean steps per interval", main="Mean number of steps per interval", strip=strip.custom(factor.levels=c("Weekdays", "Weekends")),layout=c(1,2))
+dev.copy(png, file="figures/plot4.png")
+dev.off
+```
